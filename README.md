@@ -6,6 +6,8 @@ Ever had someone on your network hogging all the bandwidth with no way to contro
 
 > **Linux only.** Windows and macOS are not supported. Throttnux relies on `arpspoof` and `tc`, which are Linux-exclusive tools with no equivalent on other operating systems.
 
+Throttnux was inspired by Evillimiter and NetCut, which use similar ARP spoofing techniques.
+
 ## How It Works
 
 1. **ARP Spoofing** Throttnux sends forged ARP replies to trick the target device into routing all its traffic through your machine.
