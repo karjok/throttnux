@@ -5,6 +5,7 @@ import logging
 
 log = logging.getLogger("throttnux")
 
+REQUIRED_TOOLS = ["arpspoof", "tc", "arp-scan"]
 
 def check_os():
     if sys.platform != "linux":
@@ -22,10 +23,11 @@ def check_root():
 
 def check_dependencies():
     missing = []
-    for tool in ["arpspoof", "tc", "arp-scan"]:
+    for tool in REQUIRED_TOOLS:
         result = subprocess.run(
-            f"which {tool}",
+            f"command -v {tool} 2>&1 >/dev/null",
             shell=True,
+            # FIXME: This line is unnecessary if we want to get the return code
             capture_output=True
         )
         if result.returncode != 0:
