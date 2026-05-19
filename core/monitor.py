@@ -40,7 +40,10 @@ def get_tc_stats(interface):
 
 
 def verify_spoofing(interface, stop_event):
-    """Auto-verify whether spoofing successfully captured target traffic."""
+    """
+    Auto-verify whether spoofing successfully captured target traffic.
+    If no traffic is detected after 5 seconds, stop the program.
+    """
     log.info("Verifying spoofing status (waiting 5 seconds)...")
     time.sleep(5)
 
@@ -53,8 +56,9 @@ def verify_spoofing(interface, stop_event):
         if pkts > 0:
             log.info(f"Spoofing SUCCESSFUL — {pkts} packets captured from target")
         else:
-            log.warning("Spoofing may have FAILED — no traffic captured yet")
-            log.warning("Make sure the target device is actively using the internet")
+            log.warning("Target device does not appear to be using the network.")
+            log.warning("Stopping Throttnux.")
+            stop_event.set()
 
 
 def live_monitor(interface, target_ip, limit_mbps, stop_event):
@@ -65,12 +69,16 @@ def live_monitor(interface, target_ip, limit_mbps, stop_event):
     Status indicator:
       ● — throttling active (overlimit packets detected)
       ○ — idle or spoofing not yet effective
+
+    Auto-stops if target device goes offline mid-session.
     """
     time.sleep(6)
 
-    start_time = time.time()
-    prev_bytes = 0
-    prev_time  = time.time()
+    start_time   = time.time()
+    prev_bytes   = 0
+    prev_time    = time.time()
+    idle_seconds = 0
+    IDLE_TIMEOUT = 10
 
     print()
 
@@ -88,6 +96,19 @@ def live_monitor(interface, target_ip, limit_mbps, stop_event):
             total_str   = format_bytes(total_bytes)
             status      = "●" if overlimits > 0 else "○"
 
+            # Detect if target went offline mid-session
+            if delta_bytes == 0 and uptime > 15:
+                idle_seconds += 1
+                if idle_seconds >= IDLE_TIMEOUT:
+                    sys.stdout.write("\r" + " " * 100 + "\r")
+                    sys.stdout.flush()
+                    log.warning("Target device appears to have gone offline.")
+                    log.warning("Stopping Throttnux.")
+                    stop_event.set()
+                    break
+            else:
+                idle_seconds = 0
+
             line = (
                 f"\r[LIVE {status}] {target_ip} → "
                 f"{mbps:.2f} Mbps / {limit_mbps} Mbps limit | "
@@ -102,5 +123,5 @@ def live_monitor(interface, target_ip, limit_mbps, stop_event):
 
         time.sleep(1)
 
-    sys.stdout.write("\r" + " " * 80 + "\r")
+    sys.stdout.write("\r" + " " * 100 + "\r")
     sys.stdout.flush()
