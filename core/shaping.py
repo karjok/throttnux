@@ -1,14 +1,8 @@
-import subprocess
 import logging
 
+from .cmds import run
+
 log = logging.getLogger("throttnux")
-
-
-def run(cmd, check=True):
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if check and result.returncode != 0:
-        log.error(f"Command failed: {cmd}\n{result.stderr.strip()}")
-    return result
 
 
 def enable_ip_forward():

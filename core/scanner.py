@@ -1,14 +1,10 @@
 import re
 import sys
-import subprocess
 import logging
 
+from .cmds import runWithoutCheck as run
+
 log = logging.getLogger("throttnux")
-
-
-def run(cmd):
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
-
 
 def scan_devices(interface, router_ip):
     """Scan all active devices on the local network using arp-scan."""
