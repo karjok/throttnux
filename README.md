@@ -1,7 +1,5 @@
 # Throttnux
 
-Per-device bandwidth limiter for local networks. No router access required.
-
 Ever had someone on your network hogging all the bandwidth with no way to control it? Throttnux lets you limit the internet speed of any device on your local network directly from your Linux machine, without touching the router, changing firmware, or needing admin access.
 
 > **Linux only.** Windows and macOS are not supported. Throttnux relies on `arpspoof` and `tc`, which are Linux-exclusive tools with no equivalent on other operating systems.
