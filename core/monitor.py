@@ -70,15 +70,17 @@ def live_monitor(interface, target_ip, limit_mbps, stop_event):
       ● — throttling active (overlimit packets detected)
       ○ — idle or spoofing not yet effective
 
-    Auto-stops if target device goes offline mid-session.
+    If target goes offline, program keeps running and waits for reconnection.
+    If target comes back online, throttling resumes automatically.
     """
     time.sleep(6)
 
-    start_time   = time.time()
-    prev_bytes   = 0
-    prev_time    = time.time()
-    idle_seconds = 0
-    IDLE_TIMEOUT = 10
+    start_time    = time.time()
+    prev_bytes    = 0
+    prev_time     = time.time()
+    idle_seconds  = 0
+    IDLE_TIMEOUT  = 10
+    target_online = True
 
     print()
 
@@ -96,27 +98,28 @@ def live_monitor(interface, target_ip, limit_mbps, stop_event):
             total_str   = format_bytes(total_bytes)
             status      = "●" if overlimits > 0 else "○"
 
-            # Detect if target went offline mid-session
             if delta_bytes == 0 and uptime > 15:
                 idle_seconds += 1
-                if idle_seconds >= IDLE_TIMEOUT:
+                if idle_seconds >= IDLE_TIMEOUT and target_online:
                     sys.stdout.write("\r" + " " * 100 + "\r")
                     sys.stdout.flush()
-                    log.warning("Target device appears to have gone offline.")
-                    log.warning("Stopping Throttnux.")
-                    stop_event.set()
-                    break
+                    log.warning("Target device appears to have gone offline. Waiting for reconnection...")
+                    target_online = False
             else:
+                if not target_online:
+                    log.info("Target device is back online. Throttling resumed.")
+                    target_online = True
                 idle_seconds = 0
 
-            line = (
-                f"\r[LIVE {status}] {target_ip} → "
-                f"{mbps:.2f} Mbps / {limit_mbps} Mbps limit | "
-                f"{total_str} throttled | "
-                f"Uptime: {uptime_str}   "
-            )
-            sys.stdout.write(line)
-            sys.stdout.flush()
+            if target_online:
+                line = (
+                    f"\r[LIVE {status}] {target_ip} → "
+                    f"{mbps:.2f} Mbps / {limit_mbps} Mbps limit | "
+                    f"{total_str} throttled | "
+                    f"Uptime: {uptime_str}   "
+                )
+                sys.stdout.write(line)
+                sys.stdout.flush()
 
             prev_bytes = total_bytes
             prev_time  = now
