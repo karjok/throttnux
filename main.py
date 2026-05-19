@@ -6,6 +6,8 @@ import atexit
 import logging
 import threading
 
+
+
 from core import (
     check_os,
     check_root,
@@ -96,7 +98,10 @@ def main():
     print("=" * 58)
 
     try:
-        if input("\n  Proceed? (y/n): ").strip().lower() != "y":
+        confirm = input("\n  Proceed? (y/n) [Enter to confirm]: ").strip().lower()
+        if confirm == "":
+            print("\033[A  Proceed? (y/n) [Enter to confirm]: y")
+        elif confirm != "y":
             print("  Cancelled.")
             sys.exit(0)
     except KeyboardInterrupt:
