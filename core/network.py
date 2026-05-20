@@ -1,6 +1,7 @@
 import re
 import sys
 import logging
+import subprocess
 
 try:
     import psutil
@@ -11,9 +12,11 @@ except ImportError:
     print("        Arch Linux   : sudo pacman -S python-psutil")
     sys.exit(1)
 
-from .cmds import runWithoutCheck as run
-
 log = logging.getLogger("throttnux")
+
+
+def run(cmd):
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
 
 def get_active_interfaces():

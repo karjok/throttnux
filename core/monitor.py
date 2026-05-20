@@ -1,11 +1,14 @@
 import re
 import sys
 import time
+import subprocess
 import logging
 
-from .cmds import runWithoutCheck as run
-
 log = logging.getLogger("throttnux")
+
+
+def run(cmd):
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
 
 def format_bytes(b):

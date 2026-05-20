@@ -1,12 +1,18 @@
+import subprocess
 import logging
-
-from .cmds import run
 
 log = logging.getLogger("throttnux")
 
 # System kernel parameter to control the system forward IPv4 packets
 # Every Linux-based system have this
 SYSCTL_IP_FORWARD_PATH = "/proc/sys/net/ipv4/ip_forward"
+
+
+def run(cmd, check=True):
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if check and result.returncode != 0:
+        log.error(f"Command failed: {cmd}\n{result.stderr.strip()}")
+    return result
 
 
 def enable_ip_forward():
