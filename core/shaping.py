@@ -3,6 +3,10 @@ import logging
 
 log = logging.getLogger("throttnux")
 
+# System kernel parameter to control the system forward IPv4 packets
+# Every Linux-based system have this
+SYSCTL_IP_FORWARD_PATH = "/proc/sys/net/ipv4/ip_forward"
+
 
 def run(cmd, check=True):
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -13,12 +17,12 @@ def run(cmd, check=True):
 
 def enable_ip_forward():
     log.info("Enabling IP forwarding...")
-    run("echo 1 > /proc/sys/net/ipv4/ip_forward")
+    run(f"echo 1 > {SYSCTL_IP_FORWARD_PATH}")
 
 
 def disable_ip_forward():
     log.info("Disabling IP forwarding...")
-    run("echo 0 > /proc/sys/net/ipv4/ip_forward")
+    run(f"echo 0 > {SYSCTL_IP_FORWARD_PATH}")
 
 
 def setup_traffic_shaping(interface, target_ip, limit_mbps):

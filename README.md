@@ -33,20 +33,12 @@ git clone https://github.com/frayude/throttnux.git
 cd throttnux
 ```
 
-**2. Install dependencies**
+**2. Setup the project**
 ```bash
-# Arch Linux / CachyOS
-sudo pacman -S dsniff arp-scan python-psutil
-
-# Fedora / RHEL
-sudo dnf install dsniff arp-scan python3-psutil
-
-# Debian / Ubuntu
-sudo apt install dsniff arp-scan python3-psutil
-
-# openSUSE
-sudo zypper install dsniff arp-scan python3-psutil
+chmod +x ./setup.sh && sudo ./setup.sh
 ```
+
+Just follow the instructions and you're done.
 
 **3. Run**
 ```bash
