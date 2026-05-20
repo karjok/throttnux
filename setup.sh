@@ -1,9 +1,12 @@
-#!/bin/sh
+#!/bin/bash
+# ==============================================================================
+# Throttnux Environment Initialization & Dependency Validation Script
+# System Requirements: Linux-based OS with Bash 4.0+
+# ==============================================================================
 
 PKG_NAME="throttnux"
 
-# CHECK_DEPS are for checking purpose because
-# `iproute2` is not a binary which cannot be checked
+# Define system binaries and package dependencies
 CHECK_DEPS="tc dsniff arp-scan"
 REQUIRED_DEPS="iproute2 dsniff arp-scan"
 REQUIRED_PY_DEPS="psutil"
@@ -12,27 +15,48 @@ HAVE_PY_MISSING_DEPS=0
 
 PYTHON=""
 
-log() {
-    printf "\033[0m${PKG_NAME}::[INFO] %b\033[0m\n" "$@"
-}
+# ------------------------------------------------------------------------------
+# Terminal UI and Color Configuration (ANSI Escape Sequences)
+# ------------------------------------------------------------------------------
+NC='\033[0m'
+BOLD='\033[1m'
+DIM='\033[2m'
 
-log_err() {
-    printf "\033[1;31m${PKG_NAME}::[ERROR] %b\033[0m\n" "$@" >&2
-}
+# Foreground standard colors
+FG_CYAN='\033[36m'
+FG_GREEN='\033[32m'
+FG_RED='\033[31m'
+FG_YELLOW='\033[33m'
 
-log_prompt() {
-    printf "\033[1;36m?\033[0m %b" "$@"
-}
+# Inverted status badges for structural logging output
+BG_INFO='\033[44;97;1m INFO \033[0m'
+BG_DONE='\033[42;30;1m DONE \033[0m'
+BG_WARN='\033[43;30;1m WARN \033[0m'
+BG_FAIL='\033[41;97;1m FAIL \033[0m'
+BG_INPUT='\033[46;30;1m INPUT \033[0m'
 
-# ---------------- PRE-SETUP ----------------
+# ------------------------------------------------------------------------------
+# Logging & Output Interface Functions
+# ------------------------------------------------------------------------------
+log_info()    { echo -e "${BG_INFO} $1"; }
+log_success() { echo -e "${BG_DONE} ${FG_GREEN}$1${NC}"; }
+log_warn()    { echo -e "${BG_WARN} ${FG_YELLOW}$1${NC}"; }
+log_fail()    { echo -e "${BG_FAIL} ${FG_RED}$1${NC}" >&2; }
+log_prompt()  { echo -n -e "\n${BG_INPUT} ${BOLD}$1${NC}"; }
 
-# Check if user is not root
+# ------------------------------------------------------------------------------
+# Pre-Execution Privilege Verification
+# ------------------------------------------------------------------------------
 if [ "$(id -u)" -ne 0 ]; then
-    log_err "Are you root? User '$(id -un)' ($(id -u)), please use sudo!"
+    echo ""
+    log_fail "Administrative privileges required. Please execute via 'sudo'."
+    echo ""
     exit 1
 fi
 
-# -------------------------------------------
+# ------------------------------------------------------------------------------
+# Environment Auditing Functions
+# ------------------------------------------------------------------------------
 
 check_python() {
     if command -v python3 >/dev/null 2>&1; then
@@ -40,117 +64,150 @@ check_python() {
     elif command -v python >/dev/null 2>&1; then
         PYTHON=python
     else
-        log_err "Python is not installed."
+        log_fail "Python runtime environment could not be resolved."
     fi
 }
 
 check_deps() {
-    log "Checking required dependencies..."
+    log_info "Evaluating core system dependencies..."
+    echo -e "${DIM}──────────────────────────────────────────────────${NC}"
 
     for dep in $CHECK_DEPS; do
-        printf "  [ ] %s" "$dep"
-        sleep 0.5 2>/dev/null
+        # Micro-sequence loading indicator for terminal feedback
+        local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+        for i in {1..2}; do
+            for j in {0..9}; do
+                printf "\r  ${FG_CYAN}%c${NC} Verifying module: ${BOLD}%s${NC}..." "${spinstr:$j:1}" "$dep"
+                sleep 0.02
+            done
+        done
 
         path="$(command -v "$dep" 2>/dev/null)"
         if [ -n "$path" ]; then
-            printf "\r  [x] %s -> %s\n" "$dep" "$path"
+            # Format output alignment dynamically using left-aligned string padding
+            printf "\r  ${FG_GREEN}✔${NC} Verified  ${BOLD}%-12s${NC} ${DIM}➔ %s${NC}\n" "$dep" "$path"
         else
+            printf "\r  ${FG_RED}✖${NC} Missing   ${FG_RED}${BOLD}%-12s${NC} ${DIM}➔ Resolution failed${NC}\n" "$dep"
             HAVE_MISSING_DEPS=1
         fi
     done
+    echo -e "${DIM}──────────────────────────────────────────────────${NC}"
     unset path
 }
 
 check_py_deps() {
+    log_info "Evaluating Python environment packages..."
+    echo -e "${DIM}──────────────────────────────────────────────────${NC}"
+    
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    for i in {1..2}; do
+        for j in {0..9}; do
+            printf "\r  ${FG_CYAN}%c${NC} Verifying package: ${BOLD}psutil${NC}..." "${spinstr:$j:1}"
+            sleep 0.02
+        done
+    done
+
     if ! $PYTHON -c "import psutil" 2>/dev/null; then
-        log_err "Missing Python package 'psutil'"
+        printf "\r  ${FG_RED}✖${NC} Missing   ${FG_RED}${BOLD}psutil${NC}       ${DIM}➔ Resolution failed${NC}\n"
         HAVE_PY_MISSING_DEPS=1
+    else
+        printf "\r  ${FG_GREEN}✔${NC} Verified  ${BOLD}psutil${NC}       ${DIM}➔ Resolved${NC}\n"
     fi
+    echo -e "${DIM}──────────────────────────────────────────────────${NC}"
 }
 
+# ------------------------------------------------------------------------------
+# Package Management Engine Execution
+# ------------------------------------------------------------------------------
 install_pkg() {
     pkgs="$*"
-    log "Installing required dependencies..."
-
+    
     if command -v dnf >/dev/null 2>&1; then
-        log "Using dnf package manager"
+        log_info "Package manager resolved: ${BOLD}dnf${NC}"
         dnf install -y $pkgs
     elif command -v pacman >/dev/null 2>&1; then
-        log "Using pacman package manager"
+        log_info "Package manager resolved: ${BOLD}pacman${NC}"
         pacman -Sy --noconfirm $pkgs
     elif command -v apt-get >/dev/null 2>&1; then
-        log "Using apt package manager"
+        log_info "Package manager resolved: ${BOLD}apt${NC}"
         apt-get update
         apt-get install -y $pkgs
     elif command -v zypper >/dev/null 2>&1; then
-        log "Using zypper package manager"
+        log_info "Package manager resolved: ${BOLD}zypper${NC}"
         zypper install -y $pkgs
     else
-        log_err "Unsupported package manager"
+        log_fail "Package manager unsupported. Manual installation required."
         exit 1
     fi
 }
 
+# ------------------------------------------------------------------------------
+# Main Execution Flow Controller
+# ------------------------------------------------------------------------------
 run() {
-    log "Initiating setup..."
+    clear
+    echo -e "${FG_CYAN}┌────────────────────────────────────────────────┐${NC}"
+    echo -e "${FG_CYAN}│${NC}          ${BOLD}${FG_CYAN}THROTTNUX${NC} ${DIM}- Environment Setup${NC}         ${FG_CYAN}│${NC}"
+    echo -e "${FG_CYAN}└────────────────────────────────────────────────┘${NC}"
+    echo ""
 
-    # ----- Python check
+    log_info "Initiating deployment environment validation..."
+    echo ""
 
+    # Validate Python Environment
     check_python
     if [ -z "$PYTHON" ]; then
-        echo
-        log_prompt "Python v3 is required! Proceed to install? (Y/n) "
+        log_prompt "Python v3 runtime is required. Deploy runtime? (Y/n): "
         read -r proceed
 
         if [ "$proceed" = 'y' ] || [ "$proceed" = 'Y' ] || [ "$proceed" = '' ]; then
-            # The fallback is for Arch-based distros
+            echo ""
             install_pkg python3 || install_pkg python
         else
-            log_err "Python v3 is required to be installed!"
+            echo ""
+            log_fail "Initialization aborted. Python dependency unfulfilled."
             exit 1
         fi
         unset proceed
     fi
 
-    # ----- Dependencies
-
+    # Validate Core Binary Infrastructure
     check_deps
     if [ $HAVE_MISSING_DEPS -eq 1 ]; then
-        echo
-        log_prompt "Dependencies are missing. Proceed to install? (Y/n) "
+        log_prompt "Required binaries are missing. Automate system setup? (Y/n): "
         read -r proceed
 
         if [ "$proceed" = 'y' ] || [ "$proceed" = 'Y' ] || [ "$proceed" = '' ]; then
-            echo
+            echo ""
             install_pkg $REQUIRED_DEPS
         else
-            log_err "Dependencies (${REQUIRED_DEPS}) are required!"
+            echo ""
+            log_fail "Initialization aborted. System binaries unfulfilled."
             exit 1
         fi
         unset proceed
     fi
 
-    # ----- Python dependencies
-
+    # Validate Library Infrastructure
     check_py_deps
     if [ $HAVE_PY_MISSING_DEPS -eq 1 ]; then
-        echo
-        log_prompt "Proceed to install 'psutil'? (Y/n) "
+        log_prompt "Python 'psutil' is unlinked. Install extension? (Y/n): "
         read -r proceed
 
         if [ "$proceed" = 'y' ] || [ "$proceed" = 'Y' ] || [ "$proceed" = '' ]; then
-            echo
-            # The fallback is for Arch-based distros
+            echo ""
             install_pkg python3-psutil || install_pkg python-psutil
         else
-            log_err "Python dependency (${REQUIRED_PY_DEPS}) is required!"
+            echo ""
+            log_fail "Initialization aborted. Library extension unfulfilled."
             exit 1
         fi
         unset proceed
     fi
 
-    echo
-    echo "Everything is done! You can now run the program."
+    echo ""
+    log_success "Environment initialization finalized successfully."
+    echo -e "${DIM}Operational state ready. You can now execute the application safely.${NC}\n"
 }
 
 run
