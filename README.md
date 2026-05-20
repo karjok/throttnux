@@ -35,7 +35,7 @@ cd throttnux
 
 **2. Setup the project**
 ```bash
-chmod +x ./setup.sh && ./setup.sh
+chmod +x ./setup.sh && sudo ./setup.sh
 ```
 
 Just follow the instructions and you're done.
